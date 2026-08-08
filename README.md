@@ -3,7 +3,7 @@
 <p align="center">
   <img width="100" alt="倾听音乐 icon" src="public/favicon.svg">
 </p>
-<p align="center"><strong>水獭音乐</strong></p>
+<p align="center"><strong>倾听音乐</strong></p>
 
 <p align="center">
   基于 <a href="https://music-api.gdstudio.xyz/api.php">GD Studio's API</a> 的多音源聚合音乐播放器
