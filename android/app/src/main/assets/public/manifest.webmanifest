@@ -1,1 +1,1 @@
-{"name":"Otter Music","short_name":"Otter Music","description":"水獭音乐 - 开源免费音乐播放器","start_url":"/","display":"standalone","background_color":"#f9fbfc","theme_color":"#58c9aa","lang":"en","scope":"/","icons":[{"src":"/favicon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}]}
+{"name":"倾听音乐","short_name":"倾听音乐","description":"倾听音乐 - 在线免费音乐播放器","start_url":"/","display":"standalone","background_color":"#f9fbfc","theme_color":"#58c9aa","lang":"zh","scope":"/","icons":[{"src":"/favicon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}]}
