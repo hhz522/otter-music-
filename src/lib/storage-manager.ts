@@ -6,10 +6,10 @@ import type { AudioFormat } from "@otter-music/shared";
  * 统一存储配置中心
  */
 export const STORAGE_CONFIG = {
-  // 根目录名称
-  BASE_NAME: "OtterMusic",
-  // 基础路径（相对于根）
-  ROOT: "Download/OtterMusic",
+  // 根目录名称（保留 BASE_NAME 以兼容旧数据）
+  BASE_NAME: "QingtingMusic",
+  // 基础路径（相对于根） — 使用英文目录名便于跨平台兼容
+  ROOT: "Download/QingtingMusic",
   // 公共目录枚举
   BASE_DIR: Directory.ExternalStorage,
 } as const;
