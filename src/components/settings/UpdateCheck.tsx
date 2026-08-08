@@ -121,33 +121,8 @@ export function UpdateDialog({ open, onOpenChange }: UpdateDialogProps) {
   );
 }
 
+// Temporarily hide the update UI in "关于系统" page.
+// To re-enable, restore the original return below.
 export function UpdateCheck() {
-  const [showDialog, setShowDialog] = useState(false);
-  const { currentVersion, hasUpdate } = useAppStore();
-
-  return (
-    <>
-      <SettingItem
-        icon={Milestone}
-        title="版本更新"
-        onClick={() => setShowDialog(true)}
-        action={
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">
-              {currentVersion}
-            </span>
-
-            {hasUpdate && (
-              <Badge variant="destructive" className="gap-1 animate-bounce">
-                新版本
-              </Badge>
-            )}
-          </div>
-        }
-        showChevron
-      />
-
-      <UpdateDialog open={showDialog} onOpenChange={setShowDialog} />
-    </>
-  );
+  return null;
 }
