@@ -1,5 +1,5 @@
 import { MusicTrack } from "@/types/music";
-import { Directory } from "@capacitor/filesystem";
+import { Directory, Filesystem } from "@capacitor/filesystem";
 import type { AudioFormat } from "@otter-music/shared";
 
 /**
@@ -72,3 +72,64 @@ export function getMusicPath(customDir?: string): string {
   }
   return AppPaths.Music;
 }
+
+// ========== Download directory migration ===========
+// 在模块加载时异步尝试迁移旧的下载目录（Download/OtterMusic）到新的 ROOT
+const OLD_DOWNLOAD_ROOT = "Download/OtterMusic";
+let downloadMigrationDone = false;
+
+async function migrateDownloadsIfNeeded() {
+  if (downloadMigrationDone) return;
+  downloadMigrationDone = true;
+
+  try {
+    // 读取旧目录下的文件/子目录
+    const oldList = await Filesystem.readdir({
+      path: OLD_DOWNLOAD_ROOT,
+      directory: Directory.ExternalStorage,
+    }).catch(() => ({ files: [], directories: [] } as any));
+
+    if (!oldList || (!oldList.files?.length && !oldList.directories?.length)) {
+      return;
+    }
+
+    // 确保新目录存在
+    await Filesystem.mkdir({
+      path: STORAGE_CONFIG.ROOT,
+      directory: Directory.ExternalStorage,
+      recursive: true,
+    }).catch(() => {});
+
+    // 迁移文件（仅顶层文件），递归目录可以按需扩展
+    for (const file of oldList.files || []) {
+      try {
+        const oldPath = `${OLD_DOWNLOAD_ROOT}/${file}`;
+        const newPath = `${STORAGE_CONFIG.ROOT}/${file}`;
+        const data = await Filesystem.readFile({
+          path: oldPath,
+          directory: Directory.ExternalStorage,
+        });
+        await Filesystem.writeFile({
+          path: newPath,
+          data: data.data,
+          directory: Directory.ExternalStorage,
+          recursive: true,
+        });
+        // 删除旧文件（忽略错误）
+        await Filesystem.deleteFile({
+          path: oldPath,
+          directory: Directory.ExternalStorage,
+        }).catch(() => {});
+      } catch (e) {
+        console.warn("migrateDownloads file error:", e);
+      }
+    }
+
+    // TODO: 选项：迁移子目录（albums / artists folders）——目前略过以降低风险
+  } catch (e) {
+    console.error("migrateDownloads error:", e);
+  }
+}
+
+// 异步触发迁移，不阻塞模块导入
+void migrateDownloadsIfNeeded();
