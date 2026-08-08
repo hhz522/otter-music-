@@ -6,9 +6,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { musicApi } from "@/lib/music-api";
 import { MusicTrack } from "@/types/music";
-import { Play } from "lucide-react";
+import { Play, Repeat } from "lucide-react";
 import { useMusicStore } from "@/store/music-store";
 import { useShallow } from "zustand/react/shallow";
+import toast from "react-hot-toast";
 
 interface LyricsPanelProps {
   track: MusicTrack | null;
@@ -60,7 +61,7 @@ function parseSimpleLrc(lrc: string): { time: number; text: string }[] {
 function parseLrc(lrc: string, tLrc?: string): LyricLine[] {
   const lLines = parseSimpleLrc(lrc);
   if (!tLrc) {
-    return lLines;
+    return lLines as any;
   }
 
   const tLines = parseSimpleLrc(tLrc);
@@ -106,9 +107,11 @@ function parseLrc(lrc: string, tLrc?: string): LyricLine[] {
 const LyricLineView = memo(function LyricLineView({
   line,
   isActive,
+  isLooping,
 }: {
   line: LyricLine;
   isActive: boolean;
+  isLooping?: boolean;
 }) {
   return (
     <div
@@ -120,9 +123,16 @@ const LyricLineView = memo(function LyricLineView({
           : "text-white/40 scale-100 hover:text-white/60 opacity-100"
       )}
     >
-      <p className="text-lg font-medium leading-8 min-h-8 tracking-wide wrap-break-word">
-        {line.text}
-      </p>
+      <div className="relative inline-block">
+        <p className="text-lg font-medium leading-8 min-h-8 tracking-wide wrap-break-word">
+          {line.text}
+        </p>
+        {isLooping && (
+          <span className="absolute -top-2 -right-6 bg-primary/90 rounded-full p-1 flex items-center justify-center shadow-sm">
+            <Repeat size={12} className="text-white" />
+          </span>
+        )}
+      </div>
       {line.ttext && (
         <p
           className={cn(
@@ -143,6 +153,12 @@ export function LyricsPanel({ track, active = true }: LyricsPanelProps) {
   const [loading, setLoading] = useState(true);
   const [isUserScrolling, setIsUserScrolling] = useState(false);
   const [centerLineIndex, setCenterLineIndex] = useState(-1);
+
+  // 新增：单句循环索引
+  const [loopIndex, setLoopIndex] = useState<number | null>(null);
+  const loopInfoRef = useRef<{ start: number; end: number } | null>(null);
+  const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const CLICK_DELAY = 250;
 
   const { currentTime, seek, seekTimestamp } = useMusicStore(
     useShallow((state) => ({
@@ -306,6 +322,13 @@ export function LyricsPanel({ track, active = true }: LyricsPanelProps) {
       clearTimeout(scrollTimeoutRef.current);
       scrollTimeoutRef.current = null;
     }
+
+    // 用户手动 seek 时取消单句循环（避免不期望的继续循环）
+    if (loopIndex !== null) {
+      setLoopIndex(null);
+      loopInfoRef.current = null;
+      toast.dismiss();
+    }
   }, [seekTimestamp]);
 
   useEffect(() => {
@@ -313,8 +336,29 @@ export function LyricsPanel({ track, active = true }: LyricsPanelProps) {
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
+      if (clickTimeoutRef.current) {
+        clearTimeout(clickTimeoutRef.current);
+      }
     };
   }, []);
+
+  // 当切换歌曲时取消单句循环
+  useEffect(() => {
+    setLoopIndex(null);
+    loopInfoRef.current = null;
+  }, [trackId]);
+
+  // 单句循环逻辑：当 currentTime 超过本句结束时间时，seek 回到句首
+  useEffect(() => {
+    if (loopIndex === null) return;
+    const info = loopInfoRef.current;
+    if (!info) return;
+
+    if (currentTime >= info.end - 0.05) {
+      // 直接调用 seek 保证状态一致
+      seek(info.start);
+    }
+  }, [currentTime, loopIndex, seek]);
 
   if (!track) {
     return (
@@ -358,8 +402,50 @@ export function LyricsPanel({ track, active = true }: LyricsPanelProps) {
                 lineRefs.current[i] = el;
               }}
               className="w-full flex justify-center"
+              onClick={(e) => {
+                e.stopPropagation();
+                // 使用延时判断是否为双击，避免单击在双击时被触发
+                if (clickTimeoutRef.current) {
+                  clearTimeout(clickTimeoutRef.current);
+                }
+                clickTimeoutRef.current = setTimeout(() => {
+                  handleSeek(line.time);
+                  toast.success(`已跳转 ${formatTime(line.time)}`);
+                  clickTimeoutRef.current = null;
+                }, CLICK_DELAY);
+              }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                if (clickTimeoutRef.current) {
+                  clearTimeout(clickTimeoutRef.current);
+                  clickTimeoutRef.current = null;
+                }
+
+                // 取消循环
+                if (loopIndex === i) {
+                  setLoopIndex(null);
+                  loopInfoRef.current = null;
+                  toast.success("已取消本句循环播放");
+                  return;
+                }
+
+                // 开始循环：结束时间取下一句开始时间或默认延长 5 秒
+                const start = line.time;
+                const next = lyrics[i + 1];
+                const end = next ? Math.max(next.time, start + 0.5) : start + 5;
+                loopInfoRef.current = { start, end };
+                setLoopIndex(i);
+
+                // 立即跳转到句首并开始播放（若当前已播放则保持）
+                handleSeek(start);
+                toast.success("已开始循环播放本句歌词（双击再次取消）");
+              }}
             >
-              <LyricLineView line={line} isActive={i === activeIndex} />
+              <LyricLineView
+                line={line}
+                isActive={i === activeIndex}
+                isLooping={i === loopIndex}
+              />
             </div>
           ))}
           {Array.from({ length: PADDING_LINES }).map((_, i) => (
@@ -376,7 +462,7 @@ export function LyricsPanel({ track, active = true }: LyricsPanelProps) {
     <div className="h-full flex flex-col relative overflow-hidden">
       {/* 使用 CSS Mask 实现上下渐隐效果，让边缘更柔和 */}
       <ScrollArea
-        className="h-full w-full **:data-[slot=scroll-area-scrollbar]:w-1.5 **:data-[slot=scroll-area-thumb]:bg-white/10 **:data-[slot=scroll-area-thumb]:hover:bg-white/30 **:ata-slot=scroll-area-thumb]]:transition-colors"
+        className="h-full w-full **:data-[slot=scroll-area-scrollbar]:w-1.5 **:data-[slot=scroll-area-thumb]:bg-white/10 **:data-[slot=scroll-area-thumb]:hover:bg-white/30 **:ata-slot=scroll-area[...]"
         viewportRef={viewportRef}
         style={{
           maskImage:
