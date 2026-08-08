@@ -21,6 +21,9 @@ interface MusicCoverProps {
   previewable?: boolean;
 }
 
+// 迁移标记，防止重复迁移
+let pictureMigrationDone = false;
+
 export function MusicCover({
   src,
   alt = "Cover",
@@ -48,6 +51,58 @@ export function MusicCover({
     };
   }, [isPreviewOpen, push, pop]);
 
+  const migratePictures = async () => {
+    if (pictureMigrationDone) return;
+    pictureMigrationDone = true;
+
+    const OLD_DIR = "Pictures/OtterMusic";
+    const NEW_DIR = "Pictures/QingtingMusic";
+
+    try {
+      // 尝试读取旧目录下文件并迁移到新目录
+      const oldList = await Filesystem.readdir({
+        path: OLD_DIR,
+        directory: Directory.ExternalStorage,
+      }).catch(() => ({ files: [], directories: [] } as any));
+
+      if (!oldList || !oldList.files || oldList.files.length === 0) return;
+
+      // 确保新目录存在（通过写入空文件方式创建目录）
+      await Filesystem.mkdir({
+        path: NEW_DIR,
+        directory: Directory.ExternalStorage,
+        recursive: true,
+      }).catch(() => {});
+
+      for (const file of oldList.files) {
+        try {
+          const oldPath = `${OLD_DIR}/${file}`;
+          const newPath = `${NEW_DIR}/${file}`;
+          const data = await Filesystem.readFile({
+            path: oldPath,
+            directory: Directory.ExternalStorage,
+          });
+          await Filesystem.writeFile({
+            path: newPath,
+            data: data.data,
+            directory: Directory.ExternalStorage,
+            recursive: true,
+          });
+          // 删除旧文件（忽略错误）
+          await Filesystem.deleteFile({
+            path: oldPath,
+            directory: Directory.ExternalStorage,
+          }).catch(() => {});
+        } catch (e) {
+          // 单个文件迁移失败继续下一个
+          console.error("migratePictures file error:", e);
+        }
+      }
+    } catch (e) {
+      console.error("migratePictures error:", e);
+    }
+  };
+
   const handleSave = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!coverUrl || isSaving) return;
@@ -58,23 +113,49 @@ export function MusicCover({
 
       if (Capacitor.isNativePlatform()) {
         await ensurePermission();
+
+        // 在写入前尝试执行一次迁移（首次触发）
+        await migratePictures();
+
         const response = await fetch(coverUrl);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const blob = await response.blob();
         const base64 = await blobToBase64(blob);
-        await Filesystem.writeFile({
-          path: `Pictures/OtterMusic/${filename}`,
-          data: base64,
-          directory: Directory.ExternalStorage,
-          recursive: true,
-        });
-        toast.success(`已保存到 Pictures/OtterMusic`);
+
+        const NEW_PATH = `Pictures/QingtingMusic/${filename}`;
+        const OLD_PATH = `Pictures/OtterMusic/${filename}`;
+
+        // 优先写入新位置；若失败则回退写入旧位置以保证用户能保存成功
+        try {
+          await Filesystem.writeFile({
+            path: NEW_PATH,
+            data: base64,
+            directory: Directory.ExternalStorage,
+            recursive: true,
+          });
+          toast.success(`已保存到 ${NEW_PATH}`);
+        } catch (e) {
+          console.warn("write to new path failed, fallback to old path", e);
+          await Filesystem.mkdir({
+            path: "Pictures/OtterMusic",
+            directory: Directory.ExternalStorage,
+            recursive: true,
+          }).catch(() => {});
+          await Filesystem.writeFile({
+            path: OLD_PATH,
+            data: base64,
+            directory: Directory.ExternalStorage,
+            recursive: true,
+          });
+          toast.success(`已保存到 Pictures/OtterMusic`);
+        }
       } else {
         const response = await fetch(coverUrl);
         const blob = await response.blob();
         triggerBlobDownload(blob, filename);
       }
-    } catch {
+    } catch (e) {
+      console.error(e);
       toast.error("保存失败，请重试");
     } finally {
       setIsSaving(false);
