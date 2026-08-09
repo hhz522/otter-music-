@@ -2,7 +2,7 @@ import { RouterProvider } from "react-router-dom";
 import { router } from "./router";
 import "./assets/global.css"; // Ensure styles are imported
 import { useEffect, useRef } from "react";
-import { useAppStore, useDownloadStore } from "./store";
+import { useDownloadStore } from "./store";
 import { useSyncStore } from "@/store/sync-store";
 import { checkAndSync } from "@/lib/sync";
 import { cleanupCache } from "@/lib/utils/cache";
@@ -24,10 +24,6 @@ export default function App() {
   }, [syncKey]);
 
   useEffect(() => {
-    // 启动时静默检查更新（用户关闭更新提醒后跳过）
-    if (useAppStore.getState().enableUpdateNotify) {
-      useAppStore.getState().checkUpdate(true);
-    }
     // 初始化下载记录
     useDownloadStore.getState().init();
 

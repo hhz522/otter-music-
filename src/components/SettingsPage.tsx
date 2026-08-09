@@ -19,10 +19,8 @@ import {
   Tag,
   Database,
   Shield,
-  Bell,
 } from "lucide-react";
 import { Switch } from "./ui/switch";
-import { useAppStore } from "@/store/app-store";
 import {
   Select,
   SelectContent,
@@ -32,7 +30,6 @@ import {
 } from "./ui/select";
 import { DownloadSetting } from "./settings/DownloadSetting";
 import { SettingItem } from "./settings/SettingItem";
-import { UpdateCheck } from "./settings/UpdateCheck";
 import { StreamCacheSetting } from "./settings/StreamCacheSetting";
 import { SleepTimerSetting } from "./settings/SleepTimerSetting";
 import { PlaybackSpeedSetting } from "./settings/PlaybackSpeedSetting";
@@ -63,7 +60,6 @@ function SettingsSection({
 
 export function SettingsPage({ onBack }: SettingsPageProps) {
   const [dataBackupOpen, setDataBackupOpen] = useState(false);
-  const { enableUpdateNotify, setEnableUpdateNotify } = useAppStore();
   const {
     volume,
     setVolume,
@@ -182,21 +178,6 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
               />
             }
           />
-          <SettingItem
-            icon={Bell}
-            title="更新通知"
-            subtitle="有新版本时自动提示"
-            action={
-              <Switch
-                checked={enableUpdateNotify}
-                onCheckedChange={setEnableUpdateNotify}
-              />
-            }
-          />
-        </SettingsSection>
-
-        <SettingsSection title="关于系统">
-          <UpdateCheck />
         </SettingsSection>
       </div>
 
