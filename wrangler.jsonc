@@ -2,6 +2,7 @@ export default {
   main: 'worker/index.ts',
   assets: {
     directory: 'dist',
+    navigation_fallback: 'index.html',
   },
   compatibility_date: '2025-01-01',
   build: {
