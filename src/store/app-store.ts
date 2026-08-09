@@ -33,7 +33,8 @@ const initialState: AppState = {
   latestVersionInfo: null,
   hasUpdate: false,
   isChecking: false,
-  enableUpdateNotify: true,
+  // 默认关闭启动时自动检查与提示
+  enableUpdateNotify: false,
 };
 
 /* =========================
