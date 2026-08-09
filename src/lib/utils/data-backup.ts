@@ -24,7 +24,7 @@ import { logger } from "@/lib/logger";
 const CURRENT_VERSION = 1;
 
 function backupFileName(): string {
-  return `otter-music-backup-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+  return `qingting-music-backup-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
 }
 
 /** 将备份保存为用户可访问的 JSON 文件，兼容原生端和 Web 端。 */
@@ -63,7 +63,7 @@ export async function saveBackupFile(json: string): Promise<string> {
 /** 备份 JSON 顶层结构 */
 interface BackupEnvelope {
   version: number;
-  type: "otter-music-backup";
+  type: "qingting-music-backup";
   exportedAt: number;
   data: BackupPayload;
 }
@@ -166,7 +166,7 @@ export function serializeStoreData(): string {
 
   const envelope: BackupEnvelope = {
     version: CURRENT_VERSION,
-    type: "otter-music-backup",
+    type: "qingting-music-backup",
     exportedAt: Date.now(),
     data: payload,
   };
@@ -233,8 +233,8 @@ export function validateBackupData(raw: string): BackupValidationResult {
     };
   }
 
-  // 校验 type（可选但建议）
-  if (envelope.type !== "otter-music-backup") {
+  // 校验 type（兼容旧版 otter-music-backup 和新版 qingting-music-backup）
+  if (envelope.type !== "qingting-music-backup" && envelope.type !== "otter-music-backup") {
     return { valid: false, error: "数据格式不匹配，缺少正确的 type 标识" };
   }
 

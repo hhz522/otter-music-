@@ -1,1 +1,1 @@
-export const GithubUrl = "https://github.com/DJChanahCJD/otter-music";
+export const GithubUrl = "https://github.com/hhz522/qingtingmusic";

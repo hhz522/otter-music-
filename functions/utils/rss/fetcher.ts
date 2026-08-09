@@ -14,7 +14,7 @@ export async function fetchWithTimeout(
       headers: {
         accept:
           "application/rss+xml, application/xml, text/xml, application/atom+xml;q=0.9, */*;q=0.8",
-        "user-agent": "OtterMusic/2.0",
+        "user-agent": "QingTingMusic/2.0",
       },
       cf: { cacheTtl: RSS_CACHE_TTL_SECONDS, cacheEverything: true },
     } as any);

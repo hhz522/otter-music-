@@ -43,7 +43,7 @@ function DownloadDirectorySelectInner() {
     <SettingItem
       icon={FolderOpen}
       title="下载目录"
-      subtitle={downloadDirectory || "默认目录 (Download/OtterMusic)"}
+      subtitle={downloadDirectory || "默认目录 (Download/QingtingMusic)"}
       action={
         <div className="flex items-center gap-1">
           <button

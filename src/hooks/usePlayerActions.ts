@@ -28,7 +28,7 @@ export function usePlayerActions(
     if (!shareUrl) return toast.error("该音源暂不支持分享");
 
     const ok = await writeClipboardText(
-      `【OtterMusic】${currentTrack.name} - ${currentTrack.artist.join(", ")}\n${shareUrl}`
+      `【倾听音乐】${currentTrack.name} - ${currentTrack.artist.join(", ")}\n${shareUrl}`
     );
     if (ok) {
       toast.success("已复制到剪贴板");
