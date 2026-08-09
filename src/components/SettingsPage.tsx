@@ -33,7 +33,6 @@ import {
 import { DownloadSetting } from "./settings/DownloadSetting";
 import { SettingItem } from "./settings/SettingItem";
 import { UpdateCheck } from "./settings/UpdateCheck";
-import { IssueLogs } from "./settings/IssueLogs";
 import { StreamCacheSetting } from "./settings/StreamCacheSetting";
 import { SleepTimerSetting } from "./settings/SleepTimerSetting";
 import { PlaybackSpeedSetting } from "./settings/PlaybackSpeedSetting";
@@ -198,7 +197,6 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
 
         <SettingsSection title="关于系统">
           <UpdateCheck />
-          <IssueLogs />
         </SettingsSection>
       </div>
 
