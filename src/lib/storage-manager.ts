@@ -73,63 +73,120 @@ export function getMusicPath(customDir?: string): string {
   return AppPaths.Music;
 }
 
-// ========== Download directory migration ===========
-// 在模块加载时异步尝试迁移旧的下载目录（Download/OtterMusic）到新的 ROOT
+// ================= Recursive download migration ===================
+// Migrate everything under Download/OtterMusic -> Download/QingtingMusic
 const OLD_DOWNLOAD_ROOT = "Download/OtterMusic";
-let downloadMigrationDone = false;
+const PROGRESS_KEY = "qingting_download_migration_progress";
+let downloadMigrationRunning = false;
 
-async function migrateDownloadsIfNeeded() {
-  if (downloadMigrationDone) return;
-  downloadMigrationDone = true;
+function sleep(ms: number) {
+  return new Promise((res) => setTimeout(res, ms));
+}
 
+async function readDirSafe(path: string) {
+  return Filesystem.readdir({ path, directory: Directory.ExternalStorage }).catch(
+    () => ({ files: [], directories: [] } as any)
+  );
+}
+
+async function ensureDir(path: string) {
+  return Filesystem.mkdir({ path, directory: Directory.ExternalStorage, recursive: true }).catch(() => {});
+}
+
+async function copyFile(oldPath: string, newPath: string) {
   try {
-    // 读取旧目录下的文件/子目录
-    const oldList = await Filesystem.readdir({
-      path: OLD_DOWNLOAD_ROOT,
-      directory: Directory.ExternalStorage,
-    }).catch(() => ({ files: [], directories: [] } as any));
-
-    if (!oldList || (!oldList.files?.length && !oldList.directories?.length)) {
-      return;
-    }
-
-    // 确保新目录存在
-    await Filesystem.mkdir({
-      path: STORAGE_CONFIG.ROOT,
-      directory: Directory.ExternalStorage,
-      recursive: true,
-    }).catch(() => {});
-
-    // 迁移文件（仅顶层文件），递归目录可以按需扩展
-    for (const file of oldList.files || []) {
-      try {
-        const oldPath = `${OLD_DOWNLOAD_ROOT}/${file}`;
-        const newPath = `${STORAGE_CONFIG.ROOT}/${file}`;
-        const data = await Filesystem.readFile({
-          path: oldPath,
-          directory: Directory.ExternalStorage,
-        });
-        await Filesystem.writeFile({
-          path: newPath,
-          data: data.data,
-          directory: Directory.ExternalStorage,
-          recursive: true,
-        });
-        // 删除旧文件（忽略错误）
-        await Filesystem.deleteFile({
-          path: oldPath,
-          directory: Directory.ExternalStorage,
-        }).catch(() => {});
-      } catch (e) {
-        console.warn("migrateDownloads file error:", e);
-      }
-    }
-
-    // TODO: 选项：迁移子目录（albums / artists folders）——目前略过以降低风险
+    const data = await Filesystem.readFile({ path: oldPath, directory: Directory.ExternalStorage });
+    await Filesystem.writeFile({ path: newPath, data: data.data, directory: Directory.ExternalStorage, recursive: true });
+    return true;
   } catch (e) {
-    console.error("migrateDownloads error:", e);
+    console.warn("copyFile failed", oldPath, newPath, e);
+    return false;
   }
 }
 
-// 异步触发迁移，不阻塞模块导入
-void migrateDownloadsIfNeeded();
+async function deleteFileSafe(path: string) {
+  return Filesystem.deleteFile({ path, directory: Directory.ExternalStorage }).catch(() => {});
+}
+
+async function migrateDirectory(oldRoot: string, newRoot: string) {
+  const stack: Array<{ oldPath: string; newPath: string }> = [];
+  // start from root
+  stack.push({ oldPath: oldRoot, newPath: newRoot });
+
+  // load progress to resume if present
+  const rawProgress = typeof window !== "undefined" ? localStorage.getItem(PROGRESS_KEY) : null;
+  const progress = rawProgress ? JSON.parse(rawProgress) : { processed: {} };
+
+  const batchSize = 20; // files per batch
+
+  while (stack.length) {
+    const node = stack.pop()!;
+    const relOld = node.oldPath;
+    const relNew = node.newPath;
+
+    // ensure new directory exists
+    await ensureDir(relNew);
+
+    const listing = await readDirSafe(relOld).catch(() => ({ files: [], directories: [] } as any));
+
+    const files: string[] = listing.files || [];
+    const dirs: string[] = listing.directories || [];
+
+    // process files in batches
+    for (let i = 0; i < files.length; i += batchSize) {
+      const batch = files.slice(i, i + batchSize);
+      for (const file of batch) {
+        const oldPath = `${relOld}/${file}`;
+        const newPath = `${relNew}/${file}`;
+
+        // skip if already processed
+        if (progress.processed[oldPath]) continue;
+
+        const ok = await copyFile(oldPath, newPath);
+        if (ok) {
+          // try to delete old file after successful copy
+          await deleteFileSafe(oldPath);
+          progress.processed[oldPath] = true;
+          if (typeof window !== "undefined") localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+        }
+        // small delay to avoid hogging IO
+        await sleep(50);
+      }
+      // delay between batches
+      await sleep(200);
+    }
+
+    // push subdirectories onto stack (process depth-first)
+    for (const d of dirs.reverse()) {
+      const oldSub = `${relOld}/${d}`;
+      const newSub = `${relNew}/${d}`;
+      stack.push({ oldPath: oldSub, newPath: newSub });
+    }
+  }
+}
+
+export async function migrateDownloadsRecursively() {
+  if (downloadMigrationRunning) return;
+  downloadMigrationRunning = true;
+
+  try {
+    // check if old root exists
+    const listing = await readDirSafe(OLD_DOWNLOAD_ROOT).catch(() => ({ files: [], directories: [] } as any));
+    if (!listing || (listing.files.length === 0 && listing.directories.length === 0)) return;
+
+    await migrateDirectory(OLD_DOWNLOAD_ROOT, STORAGE_CONFIG.ROOT);
+  } catch (e) {
+    console.error("migrateDownloadsRecursively error:", e);
+  } finally {
+    downloadMigrationRunning = false;
+  }
+}
+
+// trigger on module load (non-blocking)
+if (typeof window !== "undefined") {
+  // run in a microtask to avoid slowing module evaluation
+  void (async () => {
+    await sleep(0);
+    void migrateDownloadsRecursively();
+  })();
+}
