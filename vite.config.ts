@@ -226,7 +226,6 @@ export default defineConfig({
         if (!url) return { valid: false, error: "url required" };
         try {
           const parsed = new URL(url);
-          // 允许 B 站图片域名：hdslb.com 和 biliimg.com
           if (!/(^|\.)hdslb\.com$|(^|\.)biliimg\.com$/.test(parsed.hostname)) {
             return { valid: false, error: "invalid cover host" };
           }
@@ -317,7 +316,6 @@ export default defineConfig({
     setupFiles: "./src/test/setup.ts",
   },
   server: {
-    // ! 应优先使用正则表达式避免因为前缀匹配和顺序而匹配错误
     proxy: {
       "/api/netease": {
         target: "https://music.163.com",
@@ -327,26 +325,50 @@ export default defineConfig({
           Referer: "https://music.163.com",
           Origin: "https://music.163.com",
         },
-        // 添加 configure 钩子拦截并替换 Headers
         configure: (proxy) => {
           proxy.on("proxyReq", (proxyReq, req) => {
-            // 1. 还原 Cookie
             if (req.headers["x-real-cookie"]) {
               proxyReq.setHeader("Cookie", req.headers["x-real-cookie"]);
             }
-            // 2. 还原 User-Agent
             if (req.headers["x-real-ua"]) {
               proxyReq.setHeader("User-Agent", req.headers["x-real-ua"]);
             }
-            // 3. 还原伪装 IP
             if (req.headers["x-real-ip"]) {
               proxyReq.setHeader("X-Real-IP", req.headers["x-real-ip"]);
               proxyReq.setHeader("X-Forwarded-For", req.headers["x-real-ip"]);
             }
-
-            // 4. 清理前端发送的自定义 Header，防止被网易云识别为爬虫特征
             proxyReq.removeHeader("x-real-cookie");
             proxyReq.removeHeader("x-real-ua");
           });
         },
       },
+      "/api/qq": {
+        target: "https://c.y.qq.com",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/qq/, ""),
+        headers: {
+          Referer: "https://y.qq.com",
+          Origin: "https://y.qq.com",
+        },
+      },
+      "/api/kuwo": {
+        target: "https://www.kuwo.cn",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/kuwo/, ""),
+        headers: {
+          Referer: "https://www.kuwo.cn",
+        },
+      },
+      "/api/kugou": {
+        target: "https://www.kugou.com",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/kugou/, ""),
+      },
+      "/api/migu": {
+        target: "https://m.music.migu.cn",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/migu/, ""),
+      },
+    },
+  },
+});

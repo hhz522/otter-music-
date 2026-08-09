@@ -1,13 +1,11 @@
 "use client";
 
 import { PageLayout } from "./PageLayout";
-import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "./ThemeToggle";
 import { QualitySelect } from "./settings/QualitySelect";
 import { AggregatedSourceSelect } from "./settings/AggregatedSourceSelect";
 import { SyncConfig } from "./settings/SyncConfig";
 import { NeteaseLogin } from "./settings/NeteaseLogin";
-import { ApiUrlConfig } from "./settings/ApiUrlConfig";
 import {
   useMusicStore,
   type FullScreenBackgroundMode,
@@ -18,8 +16,6 @@ import {
   Image,
   Palette,
   Volume2,
-  Wand2,
-  Trash2,
   Tag,
   Database,
   Shield,
@@ -41,7 +37,6 @@ import { IssueLogs } from "./settings/IssueLogs";
 import { StreamCacheSetting } from "./settings/StreamCacheSetting";
 import { SleepTimerSetting } from "./settings/SleepTimerSetting";
 import { PlaybackSpeedSetting } from "./settings/PlaybackSpeedSetting";
-import { AutoMatchSuffixSetting } from "./settings/AutoMatchSuffixSetting";
 import { AutoMatchSetting } from "./settings/AutoMatchSetting";
 import { DataBackup } from "./settings/DataBackup";
 import { useState } from "react";
@@ -68,17 +63,13 @@ function SettingsSection({
 }
 
 export function SettingsPage({ onBack }: SettingsPageProps) {
-  const navigate = useNavigate();
   const [dataBackupOpen, setDataBackupOpen] = useState(false);
   const { enableUpdateNotify, setEnableUpdateNotify } = useAppStore();
   const {
     volume,
     setVolume,
-    enableAutoMatch,
     enableProxyFallback,
     setEnableProxyFallback,
-    bilibiliKeepOriginalMeta,
-    setBilibiliKeepOriginalMeta,
     showSourceBadge,
     setShowSourceBadge,
     fullScreenBackgroundMode,
@@ -87,11 +78,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
     useShallow((state) => ({
       volume: state.volume,
       setVolume: state.setVolume,
-      enableAutoMatch: state.enableAutoMatch,
       enableProxyFallback: state.enableProxyFallback,
       setEnableProxyFallback: state.setEnableProxyFallback,
-      bilibiliKeepOriginalMeta: state.bilibiliKeepOriginalMeta,
-      setBilibiliKeepOriginalMeta: state.setBilibiliKeepOriginalMeta,
       showSourceBadge: state.showSourceBadge,
       setShowSourceBadge: state.setShowSourceBadge,
       fullScreenBackgroundMode: state.fullScreenBackgroundMode,
@@ -179,5 +167,42 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
             onClick={() => setDataBackupOpen(true)}
             showChevron
           />
+        </SettingsSection>
+
+        <SettingsSection title="高级设置">
+          <AutoMatchSetting />
+          <StreamCacheSetting />
           <SettingItem
-{
+            icon={Shield}
+            title="代理回退"
+            subtitle="音源解析失败时自动尝试备用源"
+            action={
+              <Switch
+                checked={enableProxyFallback}
+                onCheckedChange={setEnableProxyFallback}
+              />
+            }
+          />
+          <SettingItem
+            icon={Bell}
+            title="更新通知"
+            subtitle="有新版本时自动提示"
+            action={
+              <Switch
+                checked={enableUpdateNotify}
+                onCheckedChange={setEnableUpdateNotify}
+              />
+            }
+          />
+        </SettingsSection>
+
+        <SettingsSection title="关于系统">
+          <UpdateCheck />
+          <IssueLogs />
+        </SettingsSection>
+      </div>
+
+      <DataBackup open={dataBackupOpen} onOpenChange={setDataBackupOpen} />
+    </PageLayout>
+  );
+}
