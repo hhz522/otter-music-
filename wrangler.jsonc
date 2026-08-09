@@ -1,0 +1,11 @@
+export default {
+  main: 'worker/index.ts',
+  assets: {
+    directory: 'dist',
+  },
+  compatibility_date: '2025-01-01',
+  build: {
+    command: 'npx vite build',
+    watch: 'src/**/*',
+  },
+}

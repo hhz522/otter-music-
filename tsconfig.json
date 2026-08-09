@@ -25,6 +25,18 @@
       "@otter-music/shared": [
         "shared/src/index.ts"
       ],
+      "@otter-music/shared/*": [
+        "shared/src/*"
+      ],
+      "@utils/*": [
+        "functions/utils/*"
+      ],
+      "middleware/*": [
+        "functions/middleware/*"
+      ],
+      "types/*": [
+        "functions/types/*"
+      ],
     },
     "types": ["vitest/globals"]
   },
